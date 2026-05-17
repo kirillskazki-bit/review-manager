@@ -18,17 +18,73 @@ function App() {
   const [aiResponse, setAiResponse] = useState('');
   const [editingResponse, setEditingResponse] = useState('');
 
+  // Демо отзывы для тестирования
+  const demoReviews = [
+    {
+      id: 'demo_1',
+      rating: 5,
+      text: 'Супер машинка! Сыну очень понравилась, хорошее качество, рекомендую!',
+      author: 'Иван П.',
+      productName: 'Машинка на пульте управления',
+      createdAt: new Date().toLocaleDateString('ru-RU')
+    },
+    {
+      id: 'demo_2',
+      rating: 4,
+      text: 'Хороший самокат, быстро доставили. Только чуть меньше размером чем ожидал.',
+      author: 'Мария К.',
+      productName: 'Самокат детский',
+      createdAt: new Date().toLocaleDateString('ru-RU')
+    },
+    {
+      id: 'demo_3',
+      rating: 3,
+      text: 'Игрушка нормальная, но колесо скрипит. Может быть неправильно собрал?',
+      author: 'Петр М.',
+      productName: 'Экскаватор на пульте',
+      createdAt: new Date().toLocaleDateString('ru-RU')
+    },
+    {
+      id: 'demo_4',
+      rating: 2,
+      text: 'Батарейки быстро сели, не очень доволен',
+      author: 'Алекс Р.',
+      productName: 'Машинка на пульте управления',
+      createdAt: new Date().toLocaleDateString('ru-RU')
+    },
+    {
+      id: 'demo_5',
+      rating: 5,
+      text: 'Отличный самокат! Сыну 8 лет, катается каждый день. Очень доволен покупкой!',
+      author: 'Анна Л.',
+      productName: 'Самокат детский',
+      createdAt: new Date().toLocaleDateString('ru-RU')
+    }
+  ];
+
   // Загрузить отзывы из Ozon
   const loadReviews = async () => {
-    if (!settings.ozonClientId || !settings.ozonApiKey) {
-      alert('⚠️ Заполни API ключи в настройках!');
-      setShowSettings(true);
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await axios.post('https://api-seller.ozon.ru/v2/review/list',
+      // Если ключи не заполнены - загрузи демо
+      if (!settings.ozonClientId || !settings.ozonApiKey) {
+        console.log('API ключи не заполнены, загружаю ДЕМО отзывы...');
+        const enrichedReviews = demoReviews.map(r => ({
+          ...r,
+          status: localStorage.getItem(`review_${r.id}_status`) || 'new',
+          aiResponse: localStorage.getItem(`review_${r.id}_response`) || ''
+        }));
+        setReviews(enrichedReviews);
+        updateStats(enrichedReviews);
+        alert('📭 Загружены ДЕМО отзывы. Заполни API ключи в настройках для реальных отзывов.');
+        return;
+      }
+
+      // CORS прокси для обхода ограничений
+      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+      const ozonUrl = 'https://api-seller.ozon.ru/v2/review/list';
+
+      const response = await axios.post(corsProxy + ozonUrl,
         { page: 1, page_size: 10 },
         {
           headers: {
@@ -55,7 +111,15 @@ function App() {
       updateStats(enrichedReviews);
     } catch (error) {
       console.error('Ошибка загрузки отзывов:', error.message);
-      alert('❌ Ошибка загрузки отзывов. Проверь API ключи.');
+      // Если реальные отзывы не загрузились - показываем демо
+      const enrichedReviews = demoReviews.map(r => ({
+        ...r,
+        status: localStorage.getItem(`review_${r.id}_status`) || 'new',
+        aiResponse: localStorage.getItem(`review_${r.id}_response`) || ''
+      }));
+      setReviews(enrichedReviews);
+      updateStats(enrichedReviews);
+      alert('⚠️ Не удалось загрузить реальные отзывы. Показываю ДЕМО отзывы для тестирования.');
     }
     setLoading(false);
   };
